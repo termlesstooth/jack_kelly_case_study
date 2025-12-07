@@ -1,3 +1,4 @@
+# legacy script
 # takes raw harmonic graphQL output and maps to our Python objects
 from __future__ import annotations
 

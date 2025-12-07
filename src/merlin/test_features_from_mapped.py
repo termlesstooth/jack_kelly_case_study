@@ -1,40 +1,18 @@
-# loops through all companies, enriches them, scores them, and prints/writes outputs
-from __future__ import annotations
-
+# feature debugging script
 import json
 from pathlib import Path
 
-from src.merlin.models import (
-    RawCompany,
-    HarmonicEnrichment,
-    EmployeeHighlight,
-    ScoredCompanyRecord,
-)
-from src.merlin.calculate_score import process_company
+from src.merlin.models import RawCompany, HarmonicEnrichment, EmployeeHighlight, FeatureVector
+from src.merlin.features import build_features
 
-
-# ---------------------------------------------------------
-# Loading helpers
 
 def load_rows(filename: str):
-    """
-    Load all rows from harmonic_mapped.json.
-
-    Expected structure:
-    [
-      {
-        "raw_company": {...},
-        "harmonic_enrichment": {...}
-      },
-      ...
-    ]
-    """
     path = Path(filename)
+    print("Loading:", path.resolve())
     data = json.loads(path.read_text())
     if not isinstance(data, list):
         raise ValueError("Expected a list of rows in harmonic_mapped.json")
     return data
-
 
 def make_raw_company(raw_dict: dict) -> RawCompany:
     return RawCompany(
@@ -91,39 +69,22 @@ def make_harmonic_enrichment(he: dict) -> HarmonicEnrichment:
 
         founders=he.get("founders"),
     )
-# ---------------------------------------------------------
 
-
-
-# ---------------------------------------------------------
-# Main scoring entrypoint
 
 def main() -> None:
-    # Assuming you run from project root and file is: outputs/harmonic_mapped.json
     rows = load_rows("outputs/harmonic_mapped.json")
 
-    results: list[ScoredCompanyRecord] = []
-
-    for row in rows:
+    for i, row in enumerate(rows, start=1):
         raw = make_raw_company(row["raw_company"])
         enrichment = make_harmonic_enrichment(row["harmonic_enrichment"])
 
-        scored = process_company(raw, enrichment)
-        results.append(scored)
+        fv: FeatureVector = build_features(raw, enrichment)
 
-    # Sort by total score descending
-    results.sort(key=lambda r: r.scores.total, reverse=True)
+        print("=" * 80)
+        print(f"[{i}] {raw.name} ({raw.stage}, {raw.industry})")
+        print("FeatureVector:", fv)
 
-    # Print leaderboard
-    print("\n=== Company Leaderboard ===")
-    for r in results:
-        print(
-            f"{r.name:30} "
-            f"Total: {r.scores.total:6.2f}  "
-            f"(Team: {r.scores.team:6.2f}, Market: {r.scores.market:6.2f}, Funding: {r.scores.funding:6.2f})"
-        )
 
 
 if __name__ == "__main__":
     main()
-# ---------------------------------------------------------
