@@ -47,7 +47,7 @@ def score_company(features: FeatureVector) -> ScoreBreakdown:
 def _score_team(fv: FeatureVector) -> float:
     """Score founder/operator quality from EMPLOYEE HIGHLIGHTS."""
     score = 0.0
-
+    # TODO: Need to look through these since they are all not in the documentation
     if fv.top_university:
         score += TEAM_WEIGHTS["top_university"]
     if fv.seasoned_operator:

@@ -55,6 +55,8 @@ def main() -> None:
 
         scored = process_company(rc, he)
         results.append(scored)
+    
+    print("DEBUG LOCATION:", scored.location)
 
     # Sort by total score descending
     results.sort(key=lambda r: r.scores.total, reverse=True)

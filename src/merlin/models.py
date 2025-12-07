@@ -200,10 +200,10 @@ class ScoredCompanyRecord:
 
     # Sector(s)
     sectors: List[str]  # e.g. market_verticals
+    sub_sectors: List[str] # market_sub_verticals
 
     # Geography
-    country: Optional[str]
-    state: Optional[str]
+    location: str
 
     # Funding
     stage: Optional[str]

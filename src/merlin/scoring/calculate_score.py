@@ -32,17 +32,15 @@ def process_company(
 
     # Sectors = market_verticals from enrichment/FeatureVector
     sectors = enrichment.market_verticals or features.market_verticals or []
-
-    # Country/state from location if available
-    country, state = _extract_country_state(enrichment.location)
+    sub_sectors = enrichment.market_sub_verticals or features.market_sub_verticals
 
     return ScoredCompanyRecord(
         name=raw.name,
         website_url=website_url,
         website_domain=website_domain,
         sectors=sectors,
-        country=country,
-        state=state,
+        sub_sectors = sub_sectors,
+        location = features.location,
         stage=features.stage,
         funding_total=features.funding_total,
         founders=enrichment.founders or [],

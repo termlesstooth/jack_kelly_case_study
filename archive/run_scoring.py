@@ -10,7 +10,7 @@ from src.merlin.models import (
     EmployeeHighlight,
     ScoredCompanyRecord,
 )
-from src.merlin.calculate_score import process_company
+from src.merlin.scoring.calculate_score import process_company
 
 
 # ---------------------------------------------------------
