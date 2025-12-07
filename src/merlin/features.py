@@ -23,7 +23,9 @@ def build_features(
     stage = None
     funding_total = None
     location = None
+    description = None
     market_verticals: List[str] = []
+    market_sub_verticals: List[str] = []
 
     founder_flags = {
         "top_university": False,
@@ -44,6 +46,10 @@ def build_features(
     # -----------------------------
     if enrichment is not None:
 
+
+        #Description
+        description = enrichment.description #TODO: Do we want to fall back to raw description?
+
         # Funding
         stage = enrichment.stage or enrichment.funding_stage
         funding_total = enrichment.funding_total
@@ -54,6 +60,7 @@ def build_features(
 
         # Sector Fit
         market_verticals = enrichment.market_verticals or []
+        market_sub_verticals = enrichment.market_sub_verticals or []
 
         # Founder Quality Flags
         founder_flags.update(
@@ -68,7 +75,9 @@ def build_features(
         stage=stage,
         funding_total=funding_total,
         location=location,
+        description=description,
         market_verticals=market_verticals,
+        market_sub_verticals=market_sub_verticals,
         top_university=founder_flags["top_university"],
         seasoned_operator=founder_flags["seasoned_operator"],
         seasoned_executive=founder_flags["seasoned_executive"],

@@ -146,6 +146,9 @@ class FeatureVector:
     Final model-ready features used for scoring
     """
 
+    # Company Information
+    description: str
+    
     # Funding Information
     stage: str
     funding_total: int
@@ -155,6 +158,7 @@ class FeatureVector:
 
     # Sector Fit
     market_verticals: List[str]
+    market_sub_verticals: List[str]
 
     # Founder Quality
     top_university: bool = False

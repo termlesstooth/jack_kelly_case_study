@@ -11,7 +11,7 @@ from src.merlin.models import (
     ScoredCompanyRecord,
 )
 from src.merlin.features import build_features
-from src.merlin.scoring import score_company
+from src.merlin.scoring.scoring import score_company
 
 
 def process_company(
@@ -24,6 +24,7 @@ def process_company(
     """
 
     features: FeatureVector = build_features(raw, enrichment)
+    print(features)
     scores: ScoreBreakdown = score_company(features)
 
     website_url = enrichment.website_url or f"https://{enrichment.website_domain}" if enrichment.website_domain else raw.url

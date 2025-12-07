@@ -12,7 +12,7 @@ from src.merlin.models import (
     ScoredCompanyRecord,
 )
 from src.merlin.enrichment.harmonic import map_company_to_harmonic_enrichment
-from src.merlin.calculate_score import process_company
+from src.merlin.scoring.calculate_score import process_company
 from src.merlin.save_to_db import scored_companies_to_df, save_scores_to_db
 from src.merlin.notify import send_leaderboard_to_slack
 
