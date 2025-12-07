@@ -14,6 +14,7 @@ from src.merlin.models import (
 from src.merlin.enrichment.harmonic import map_company_to_harmonic_enrichment
 from src.merlin.calculate_score import process_company
 from src.merlin.save_to_db import scored_companies_to_df, save_scores_to_db
+from src.merlin.notify import send_leaderboard_to_slack
 
 
 def load_raw_harmonic(path: Path) -> List[dict]:
@@ -58,13 +59,21 @@ def main() -> None:
     # Sort by total score descending
     results.sort(key=lambda r: r.scores.total, reverse=True)
 
-    print("\n=== Company Leaderboard (from harmonic_raw_graphql.json) ===")
+    leaderboard_lines = []
+    leaderboard_lines.append("\n=== Company Leaderboard (from harmonic_raw_graphql.json) ===")
+
     for r in results:
-        print(
+        line = (
             f"{r.name:30} "
             f"Total: {r.scores.total:6.2f}  "
             f"(Team: {r.scores.team:6.2f}, Market: {r.scores.market:6.2f}, Funding: {r.scores.funding:6.2f})"
         )
+        leaderboard_lines.append(line)
+
+    leaderboard_text = "\n".join(leaderboard_lines)
+
+    print(leaderboard_text)  # still print locally
+    send_leaderboard_to_slack(leaderboard_text)
 
     # --- NEW: save to SQLite ---
     df = scored_companies_to_df(results)
