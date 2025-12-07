@@ -126,6 +126,7 @@ class ApolloEnrichment:
 
 
 # Aggregated enrichment for a single company (all providers in one place)
+# Stale right now
 @dataclass
 class CompanyEnrichment:
     """
@@ -140,46 +141,75 @@ class CompanyEnrichment:
 
 # Provider-agnostic features used by the scoring pipeline
 @dataclass
-class CompanyFeatures:
+class FeatureVector:
     """
-    Flattened, provider-agnostic features that the scoring function uses.
-    This is the final representation of a company before scoring.
+    Final model-ready features used for scoring
     """
-    # id / identity
+
+    # Funding Information
+    stage: str
+    funding_total: int
+
+    # Geography
+    location: str
+
+    # Sector Fit
+    market_verticals: List[str]
+
+    # Founder Quality
+    top_university: bool = False
+    seasoned_operator: bool = False
+    seasoned_executive: bool = False
+    prior_vc_backed_founder: bool = False
+    prior_vc_backed_executive: bool = False
+    prior_exit: bool = False
+    twenty_m_club: bool = False
+    seasoned_adviser: bool = False
+    elite_industry_experience: bool = False
+    deep_technical_background: bool = False
+    five_m_club: bool = False
+
+
+@dataclass
+class ScoreBreakdown:
+    """
+    Per-criterion scores plus composite total.
+    All scores are on a 0–100 scale.
+    """
+    team: float
+    market: float
+    funding: float
+    total: float
+
+
+@dataclass
+class ScoredCompanyRecord:
+    """
+    Final object that represents a row in your output table / DB.
+    Matches the case study requirements.
+    """
+
+    # Identity
     name: str
+    website_url: str
     website_domain: str
 
-    # raw data
-    raw_stage: Optional[str]
-    raw_industry: Optional[str]
+    # Sector(s)
+    sectors: List[str]  # e.g. market_verticals
 
-    # size / stage
-    headcount: Optional[int]
-    stage: Optional[str]              # unified stage (Harmonic + raw)
+    # Geography
+    country: Optional[str]
+    state: Optional[str]
 
-    # geography
-    geography_location: Optional[str]  # e.g. location["location"]
-    # you can split to country later if you want
-
-    # funding
+    # Funding
+    stage: Optional[str]
     funding_total: Optional[float]
-    num_funding_rounds: Optional[int]
 
-    # traction
-    has_web_traffic: bool
-    web_traffic_monthly_visits: Optional[float]
-    likelihood_of_backing: Optional[float]
+    # Founders
+    founders: List["FounderContact"]
 
-    # founder signals
-    founders: List[FounderContact]
-    founder_count: int
-    founder_emails_count: int
-    employee_highlights: List[EmployeeHighlight]  # for YC Backed Founder, Prior Exit, etc.
+    # Scores
+    scores: ScoreBreakdown
 
-    # sector / tags
-    tags: List[str]
-    tags_v2: List[str]
-
-    # optional future fields
-    estimated_revenue: Optional[float] = None
-    tech_stack_size: Optional[int] = None
+    # Optional: raw features for debugging / analytics
+    features: Dict[str, Any]
