@@ -14,7 +14,10 @@ from src.merlin.models import (
 from src.merlin.enrichment.harmonic import map_company_to_harmonic_enrichment
 from src.merlin.scoring.calculate_score import process_company
 from src.merlin.save_to_db import scored_companies_to_df, save_scores_to_db
-from src.merlin.notify import send_leaderboard_to_slack
+from src.merlin.notify import send_results_to_slack
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def load_raw_harmonic(path: Path) -> List[dict]:
@@ -75,7 +78,8 @@ def main() -> None:
     leaderboard_text = "\n".join(leaderboard_lines)
 
     print(leaderboard_text)  # still print locally
-    send_leaderboard_to_slack(leaderboard_text)
+    print("DESCRIPTION DEBUG:",results[0].description)
+    send_results_to_slack(results)
 
     # --- NEW: save to SQLite ---
     df = scored_companies_to_df(results)

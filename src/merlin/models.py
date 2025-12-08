@@ -197,6 +197,7 @@ class ScoredCompanyRecord:
     name: str
     website_url: str
     website_domain: str
+    description: str
 
     # Sector(s)
     sectors: List[str]  # e.g. market_verticals

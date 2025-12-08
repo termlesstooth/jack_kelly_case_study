@@ -34,10 +34,12 @@ def process_company(
     sectors = enrichment.market_verticals or features.market_verticals or []
     sub_sectors = enrichment.market_sub_verticals or features.market_sub_verticals
 
+    # TODO: clean up enrichment vs features
     return ScoredCompanyRecord(
         name=raw.name,
         website_url=website_url,
         website_domain=website_domain,
+        description=enrichment.description,
         sectors=sectors,
         sub_sectors = sub_sectors,
         location = features.location,

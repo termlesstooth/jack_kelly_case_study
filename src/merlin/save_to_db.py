@@ -19,6 +19,7 @@ def scored_companies_to_df(records: List[ScoredCompanyRecord]) -> pd.DataFrame:
                 "name": r.name,
                 "website_url": r.website_url,
                 "website_domain": r.website_domain,
+                "description": r.description,
                 "sectors": ", ".join(r.sectors or []),
                 "sub_sectors": ", ".join(r.sub_sectors or []),
                 "location": r.location,
