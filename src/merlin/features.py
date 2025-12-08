@@ -50,6 +50,9 @@ def build_features(
         #Description
         description = enrichment.description #TODO: Do we want to fall back to raw description?
 
+        # Headcount
+        headcount = enrichment.headcount
+
         # Funding
         stage = enrichment.stage or enrichment.funding_stage
         funding_total = enrichment.funding_total
@@ -61,11 +64,13 @@ def build_features(
         # Sector Fit
         market_verticals = enrichment.market_verticals or []
         market_sub_verticals = enrichment.market_sub_verticals or []
+        customer_type = enrichment.customer_type
 
         # Founder Quality Flags
         founder_flags.update(
             _employee_highlights_to_flags(enrichment.employee_highlights or [])
         )
+        # TODO: Separate employee highlights and founder highlights
     # -----------------------------
 
     
@@ -73,6 +78,8 @@ def build_features(
     # -----------------------------
     return FeatureVector(
         stage=stage,
+        customer_type=customer_type,
+        headcount= headcount,
         funding_total=funding_total,
         location=location,
         description=description,

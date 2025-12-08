@@ -29,8 +29,7 @@ class FounderContact:
     name: str
     title: Optional[str] = None
     linkedin_url: Optional[str] = None
-    email: Optional[str] = None
-    all_emails: Optional[str] = None
+    emails: Optional[List[str]] = None
 
 
 @dataclass
@@ -148,6 +147,8 @@ class FeatureVector:
 
     # Company Information
     description: str
+    headcount: int
+    customer_type: str
     
     # Funding Information
     stage: str
@@ -198,6 +199,8 @@ class ScoredCompanyRecord:
     website_url: str
     website_domain: str
     description: str
+    headcount: int
+    customer_type: str
 
     # Sector(s)
     sectors: List[str]  # e.g. market_verticals
@@ -218,3 +221,6 @@ class ScoredCompanyRecord:
 
     # Optional: raw features for debugging / analytics
     features: Dict[str, Any]
+
+    # Optional Harmonic Enrichment
+    harmonic: Optional[HarmonicEnrichment] = None

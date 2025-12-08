@@ -15,7 +15,8 @@ COMPOSITE_WEIGHTS = CompositeWeights()
 
 # ---------------- Team weights ----------------
 
-TEAM_WEIGHTS: dict[str, float] = {
+TEAM_WEIGHTS: dict[str, float | dict[str, float]] = {
+    # Founder / Operator signals
     "top_university": 8,
     "seasoned_operator": 8,
     "seasoned_executive": 12,
@@ -27,7 +28,15 @@ TEAM_WEIGHTS: dict[str, float] = {
     "elite_industry_experience": 8,
     "deep_technical_background": 10,
     "five_m_club": 8,
+
+    # Headcount bonus signals 
+    "headcount_bonus": {
+        "over_two": 3,                 # applies when headcount > 2
+        "over_or_equal_to_6": 5,       # applies when headcount >= 6
+        "over_or_equal_to_10": 8,      # applies when headcount >= 10
+    }
 }
+
 
 # ---------------- Market weights ----------------
 

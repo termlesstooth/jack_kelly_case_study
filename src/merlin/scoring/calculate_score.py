@@ -37,6 +37,8 @@ def process_company(
     # TODO: clean up enrichment vs features
     return ScoredCompanyRecord(
         name=raw.name,
+        headcount = enrichment.headcount,
+        customer_type = enrichment.customer_type,
         website_url=website_url,
         website_domain=website_domain,
         description=enrichment.description,
@@ -47,7 +49,8 @@ def process_company(
         funding_total=features.funding_total,
         founders=enrichment.founders or [],
         scores=scores,
-        features=features.__dict__,  # easy JSON/debug view
+        features=features.__dict__,  # easy JSON/debug view'
+        harmonic = enrichment # TODO: REMOVE THIS LATER. TERRIBLE PRACTICE. ONLY ADDING BERCAUSE THE ASK WAS TO ADD ENRICHMENT INFO IN WITH SCORE INTO ONE TABLE
     )
 
 

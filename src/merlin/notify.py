@@ -79,18 +79,33 @@ def _format_results_for_slack(results: Iterable[Any]) -> str:
 
         if founders:
             lines.append("• *Founders:*")
-            for f in founders:
-                fname = getattr(f, "name", "") or "Founder"
-                linkedin = getattr(f, "linkedin", "") or getattr(f, "linkedin_url", "")
-                email = getattr(f, "email", "")
+        for f in founders:
+            fname = getattr(f, "name", "") or "Founder"
+            linkedin = getattr(f, "linkedin", "") or getattr(f, "linkedin_url", "")
 
-                parts = [fname]
-                if linkedin:
-                    parts.append(f"<{linkedin}|LinkedIn>")
-                if email:
-                    parts.append(email)
+            # Collect all emails (support both email + emails for backwards compatibility)
+            primary = getattr(f, "email", None)
+            email_list = getattr(f, "emails", None)
 
-                lines.append(f"   – " + " — ".join(parts))
+            emails = []
+            if primary:
+                emails.append(primary)
+            if email_list:
+                # email_list should already be deduped, but we dedupe again just in case
+                for e in email_list:
+                    if e and e not in emails:
+                        emails.append(e)
+
+            # Build parts
+            parts = [fname]
+            if linkedin:
+                parts.append(f"<{linkedin}|LinkedIn>")
+            if emails:
+                parts.append(" | ".join(emails))  # ← SHOW ALL EMAILS
+
+            lines.append("   – " + " — ".join(parts))
+
+
             lines.append("")
 
         # Scores

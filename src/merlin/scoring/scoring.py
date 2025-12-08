@@ -71,6 +71,17 @@ def _score_team(fv: FeatureVector) -> float:
     if fv.five_m_club:
         score += TEAM_WEIGHTS["five_m_club"]
 
+    hc = fv.headcount or 0
+    hb = TEAM_WEIGHTS["headcount_bonus"]
+
+    if hc > 2:
+        score += hb["over_two"]
+    if hc >= 6:
+        score += hb["over_or_equal_to_6"]
+    if hc >= 10:
+        score += hb["over_or_equal_to_10"]
+
+
     return min(score, MAX_SCORE)
 
 
@@ -164,6 +175,7 @@ def _score_market(fv: FeatureVector) -> float:
     # SMB enablement bonus (based on description)
     if _is_smb_enabled(getattr(fv, "description", None)):
         score += SMB_ENABLEMENT_BONUS
+
 
     return max(0.0, min(score, MAX_SCORE))
 

@@ -43,18 +43,24 @@ def _extract_founders(company: Dict[str, Any]) -> List[FounderContact]:
         linkedin_url = linkedin.get("url")
 
         # emails
-        cm = emp.get("contactMetadata") or {}
-        primary_email = cm.get("primaryEmail")
-        emails = (cm.get("emails") or []) + (cm.get("execEmails") or [])
-        emails = list(dict.fromkeys([e for e in emails if e])) or None
+        contact = emp.get("contact") or {}
+        raw_emails = contact.get("emails") or []
+
+        # filter out empty emails
+        filtered = [email for email in raw_emails if email]
+
+        # Deduplicate while preserving order
+        emails = list(dict.fromkeys(filtered))
+
+        # normalize empty list -> None
+        emails = emails or None
 
         founders.append(
             FounderContact(
                 name=name,
                 title=title,
                 linkedin_url=linkedin_url,
-                email=primary_email,
-                all_emails=emails,
+                emails=emails
             )
         )
     return founders
