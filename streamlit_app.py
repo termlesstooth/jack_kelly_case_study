@@ -37,6 +37,16 @@ def load_docs():
 
 DOCUMENTATION_TEXT = load_docs()
 
+def _extract_weight(v: Any):
+    """Normalize weight values that might be plain numbers or dicts."""
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, dict) and "weight" in v:
+        try:
+            return float(v["weight"])
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 def load_raw_harmonic(path: Path) -> List[dict]:
@@ -146,35 +156,41 @@ def main():
     # Team weights
     with tab_team:
         st.write("**Team feature weights (from employee highlights):**")
-        st.dataframe(
-            pd.DataFrame(
-                [{"feature": k, "weight": v} for k, v in TEAM_WEIGHTS.items()]
-            ).sort_values("weight", ascending=False),
-            use_container_width=True,
-        )
+
+        team_rows = []
+        for k, v in TEAM_WEIGHTS.items():
+            w = _extract_weight(v)
+            if w is not None:
+                team_rows.append({"feature": k, "weight": w})
+
+        team_df = pd.DataFrame(team_rows).sort_values("weight", ascending=False)
+
+        st.dataframe(team_df, use_container_width=True)
+
 
     # Market weights + bonuses
     with tab_market:
         st.write("**Market vertical weights:**")
-        st.dataframe(
-            pd.DataFrame(
-                [{"vertical": k, "weight": v} for k, v in VERTICAL_WEIGHTS.items()]
-            ).sort_values("weight", ascending=False),
-            use_container_width=True,
-        )
+        vert_rows = []
+        for k, v in VERTICAL_WEIGHTS.items():
+            w = _extract_weight(v)
+            if w is not None:
+                vert_rows.append({"vertical": k, "weight": w})
+
+        vert_df = pd.DataFrame(vert_rows).sort_values("weight", ascending=False)
+        st.dataframe(vert_df, use_container_width=True)
+
 
         st.write("**Market sub-vertical weights:**")
-        st.dataframe(
-            pd.DataFrame(
-                [{"sub_vertical": k, "weight": v} for k, v in SUB_VERTICAL_WEIGHTS.items()]
-            ).sort_values("weight", ascending=False),
-            use_container_width=True,
-        )
+        sub_rows = []
+        for k, v in SUB_VERTICAL_WEIGHTS.items():
+            w = _extract_weight(v)
+            if w is not None:
+                sub_rows.append({"sub_vertical": k, "weight": w})
 
-        st.markdown(
-            f"- **AI vertical bonus:** `{AI_VERTICAL_BONUS}`\n"
-            f"- **SMB enablement bonus:** `{SMB_ENABLEMENT_BONUS}`"
-        )
+        sub_df = pd.DataFrame(sub_rows).sort_values("weight", ascending=False)
+        st.dataframe(sub_df, use_container_width=True)
+
 
     # Funding weights / brackets
     with tab_funding:
