@@ -158,7 +158,7 @@ def main():
             <li><b>Funding</b> reflects stage and total capital raised, with calibrated bonuses by bracket.</li>
           </ul>
           <p style="color:#9ca3af;">Use the leaderboard to identify companies that Core should be building relationships with.</p>
-          <p style="color:#9ca3af;">Feel free to explore the Scoring Weights below.</p>
+          <p style="color:#9ca3af;">Feel free to explore the Scoring Weights below. NOTE: The weights do not represent all scoring logic.</p>
           <p>When you're ready for Merlin to do his thing click the <b>Run Scoring</b> button.</p>
         </div>
         """,
