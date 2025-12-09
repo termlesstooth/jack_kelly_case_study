@@ -150,11 +150,11 @@ def main():
         <div class="merlin-card">
           <span class="merlin-pill">Partner View</span>
           <h3 style="margin-top:0.75rem;margin-bottom:0.35rem;">How to Read this UI</h3>
-          <p><b>Merlin Score</b> is ranking of companies based on Core VC’s investment thesis and interview insight.</p>
+          <p><b>Merlin Score</b> ranks companies based on Core VC’s investment thesis and insights gathered throughout the interview process.</p>
           <p>The score is a composite of <b>Team</b>, <b>Market</b>, and <b>Funding</b>.</p>
           <ul>
             <li><b>Team</b> leans heavily on founder track record: YC, prior exits, major tech, and deep domain.</li>
-            <li><b>Market</b> captures vertical/sub-vertical attractiveness and SMB enablement.</li>
+            <li><b>Market</b> captures vertical/sub-vertical attractiveness, SMB enablement, and location.</li>
             <li><b>Funding</b> reflects stage and total capital raised, with calibrated bonuses by bracket.</li>
           </ul>
           <p style="color:#9ca3af;">Use the leaderboard to identify companies that Core should be building relationships with.</p>
