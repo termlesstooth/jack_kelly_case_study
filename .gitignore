@@ -11,8 +11,9 @@ __pycache__/
 *.env
 
 # Outputs / data
-data/
-outputs/
+#data/
+outputs/*
+!outputs/harmonic_raw_graphql_final.json
 
 # Tools / IDE
 .vscode/
