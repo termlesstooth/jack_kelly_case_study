@@ -8,7 +8,6 @@ from typing import List
 from src.merlin.models import (
     RawCompany,
     HarmonicEnrichment,
-    CompanyEnrichment,
     ScoredCompanyRecord,
 )
 from src.merlin.enrichment.harmonic import map_company_to_harmonic_enrichment
@@ -22,11 +21,10 @@ load_dotenv()
 
 def load_raw_harmonic(path: Path) -> List[dict]:
     with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
+        return json.load(f)           
 
 def main() -> None:
-    in_path = Path("outputs/harmonic_raw_graphql.json")
+    in_path = Path("outputs/harmonic_raw_graphql_final.json")
     if not in_path.is_file():
         raise SystemExit(
             f"Input file not found: {in_path}. "
@@ -34,8 +32,9 @@ def main() -> None:
         )
 
     data = load_raw_harmonic(in_path)
-
     results: list[ScoredCompanyRecord] = []
+
+    #names_to_debug = {"Barker", "Dill", "Tesser"}  
 
     for row in data:
         raw_company_dict = row.get("raw_company") or {}
@@ -57,9 +56,8 @@ def main() -> None:
             continue
 
         scored = process_company(rc, he)
+
         results.append(scored)
-    
-    print("DEBUG LOCATION:", scored.location)
 
     # Sort by total score descending
     results.sort(key=lambda r: r.scores.total, reverse=True)
@@ -76,19 +74,13 @@ def main() -> None:
         leaderboard_lines.append(line)
 
     leaderboard_text = "\n".join(leaderboard_lines)
+    print(leaderboard_text)
 
-    print(leaderboard_text)  # still print locally
-    print("DESCRIPTION DEBUG:",results[0].description)
     send_results_to_slack(results)
-
-    # --- NEW: save to SQLite ---
     df = scored_companies_to_df(results)
-    save_scores_to_db(df)  # default path: data/merlin_scores.db, table: companies
+    save_scores_to_db(df)
     print("\nSaved scores to data/merlin_scores.db (table: companies)")
 
-    # If you don't care about harmonic_mapped.json anymore,
-    # you can delete everything below this comment.
-    # Otherwise you can flesh it out later.
 
 
 if __name__ == "__main__":

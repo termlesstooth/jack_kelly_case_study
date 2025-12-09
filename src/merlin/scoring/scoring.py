@@ -1,8 +1,7 @@
-# src/merlin/scoring/scoring.py
+# scoring logic
 from __future__ import annotations
-
-import re
 from typing import Optional
+import re
 
 from src.merlin.models import FeatureVector, ScoreBreakdown
 from src.merlin.scoring.weights import (
@@ -10,22 +9,24 @@ from src.merlin.scoring.weights import (
     TEAM_WEIGHTS,
     VERTICAL_WEIGHTS,
     SUB_VERTICAL_WEIGHTS,
-    AI_VERTICAL_BONUS,
     SMB_ENABLEMENT_BONUS,
     STAGE_BASE_SCORES,
     FUNDING_BONUS_BRACKETS,
     MAX_SCORE,
+    HEADCOUNT_BONUS
 )
 
-
+# TODO: Future improvement: Use an algorithm more advanced than a linear combination.
 def score_company(features: FeatureVector) -> ScoreBreakdown:
     """
-    High-level scoring entrypoint.
+    Linear Combination scoring entrypoint.
     Returns per-criterion scores + composite total on a 0–100 scale.
     """
     team = _score_team(features)
     market = _score_market(features)
     funding = _score_funding(features)
+
+
 
     total = (
         COMPOSITE_WEIGHTS.team * team
@@ -41,53 +42,41 @@ def score_company(features: FeatureVector) -> ScoreBreakdown:
     )
 
 
-# -------------------------------------------------------------------
-# Team score: founder / operator quality
-
 def _score_team(fv: FeatureVector) -> float:
-    """Score founder/operator quality from EMPLOYEE HIGHLIGHTS."""
+    """
+    Team score.
+
+    All founder/employee highlight signals are pre-encoded as booleans
+    on the FeatureVector in build_features. Here we just:
+      - sum weights for any True flags in TEAM_WEIGHTS
+      - add a headcount bonus
+      - clamp to MAX_SCORE
+    """
     score = 0.0
-    # TODO: Need to look through these since they are all not in the documentation
-    if fv.top_university:
-        score += TEAM_WEIGHTS["top_university"]
-    if fv.seasoned_operator:
-        score += TEAM_WEIGHTS["seasoned_operator"]
-    if fv.seasoned_executive:
-        score += TEAM_WEIGHTS["seasoned_executive"]
-    if fv.prior_vc_backed_founder:
-        score += TEAM_WEIGHTS["prior_vc_backed_founder"]
-    if fv.prior_vc_backed_executive:
-        score += TEAM_WEIGHTS["prior_vc_backed_executive"]
-    if fv.prior_exit:
-        score += TEAM_WEIGHTS["prior_exit"]
-    if fv.twenty_m_club:
-        score += TEAM_WEIGHTS["twenty_m_club"]
-    if fv.seasoned_adviser:
-        score += TEAM_WEIGHTS["seasoned_adviser"]
-    if fv.elite_industry_experience:
-        score += TEAM_WEIGHTS["elite_industry_experience"]
-    if fv.deep_technical_background:
-        score += TEAM_WEIGHTS["deep_technical_background"]
-    if fv.five_m_club:
-        score += TEAM_WEIGHTS["five_m_club"]
 
+    # founder signals
+    for attr, weight in TEAM_WEIGHTS.items():
+        if attr == "headcount_bonus":
+            continue
+
+        if getattr(fv, attr, False):
+            score += weight
+
+    # headcount bonus
     hc = fv.headcount or 0
-    hb = TEAM_WEIGHTS["headcount_bonus"]
-
     if hc > 2:
-        score += hb["over_two"]
+        score += HEADCOUNT_BONUS["over_two"]
     if hc >= 6:
-        score += hb["over_or_equal_to_6"]
+        score += HEADCOUNT_BONUS["over_or_equal_to_6"]
     if hc >= 10:
-        score += hb["over_or_equal_to_10"]
-
+        score += HEADCOUNT_BONUS["over_or_equal_to_10"]
 
     return min(score, MAX_SCORE)
 
 
-# -------------------------------------------------------------------
-# Geo helpers
 
+
+# geo helpers
 US_COUNTRY_KEYWORDS = [
     "united states",
     "united states of america",
@@ -95,7 +84,6 @@ US_COUNTRY_KEYWORDS = [
     "us",
     "u.s.",
 ]
-
 US_STATE_CODES = {
     "al","ak","az","ar","ca","co","ct","de","fl","ga","hi","id","il","in","ia","ks",
     "ky","la","me","md","ma","mi","mn","ms","mo","mt","ne","nv","nh","nj","nm","ny",
@@ -111,13 +99,13 @@ def _is_north_america(location: Optional[str]) -> bool:
 
     loc = location.lower()
 
-    # 1) Direct US/Canada keywords
+    # Direct US/Canada keywords
     if any(k in loc for k in US_COUNTRY_KEYWORDS):
         return True
     if "canada" in loc:
         return True
 
-    # 2) Two-letter U.S. state codes in the string
+    # Two letter US state codes in the string
     state_matches = re.findall(r"\b([a-z]{2})\b", loc)
     return any(code in US_STATE_CODES for code in state_matches)
 
@@ -138,61 +126,57 @@ def _is_smb_enabled(description: Optional[str]) -> bool:
     return "small" in text and "business" in text
 
 
-# -------------------------------------------------------------------
-# Market score: sector fit / location
-
 def _score_market(fv: FeatureVector) -> float:
     """
     Market score:
-
     - 0 if company is not in US/Canada.
     - Otherwise:
-        - Sum weights for each market_vertical
-        - Sum weights for each market_sub_vertical
-        - Add AI bonus if applicable
+        - Use only the strongest market_vertical
+        - Use only the strongest market_sub_vertical
         - Add SMB enablement bonus
         - Cap at 0–100
     """
     if not _is_north_america(fv.location):
         return 0.0
 
-    score = 0.0
+    # strongest vertical
+    # NOTE: Had an issue where companies with a bunch of sub-verticals had strong market scores. My assumption is that Core wouldn't prefer by 2x a company with 2 familiar sub verticals vs just 1. 
+    # Future improvement: Use an LLM to classify most relevant vertical + sub vertical
+    vertical_scores = [
+        VERTICAL_WEIGHTS.get(v, 0.0)
+        for v in (fv.market_verticals or [])
+    ]
+    best_vertical = max(vertical_scores) if vertical_scores else 0.0
 
-    # Add vertical weights
-    for v in fv.market_verticals or []:
-        score += VERTICAL_WEIGHTS.get(v, 0.0)
+    # strongest sub-vertical
+    sub_scores = [
+        SUB_VERTICAL_WEIGHTS.get(sv, 0.0)
+        for sv in (fv.market_sub_verticals or [])
+    ]
+    best_sub_vertical = max(sub_scores) if sub_scores else 0.0
 
-    # Add sub-vertical weights
-    for sv in fv.market_sub_verticals or []:
-        score += SUB_VERTICAL_WEIGHTS.get(sv, 0.0)
+    # SMB enablement bonus
+    smb_bonus = (
+        SMB_ENABLEMENT_BONUS
+        if _is_smb_enabled(getattr(fv, "description", None))
+        else 0.0
+    )
 
-    # AI bonus if any vertical clearly mentions AI / ML
-    ai_keywords = ("ai", "artificial intelligence", "machine learning")
-    vertical_text = " ".join(v.lower() for v in (fv.market_verticals or []))
-    if any(k in vertical_text for k in ai_keywords):
-        score += AI_VERTICAL_BONUS
-
-    # SMB enablement bonus (based on description)
-    if _is_smb_enabled(getattr(fv, "description", None)):
-        score += SMB_ENABLEMENT_BONUS
-
+    score = best_vertical + best_sub_vertical + smb_bonus
 
     return max(0.0, min(score, MAX_SCORE))
 
-
-# -------------------------------------------------------------------
-# Funding score: stage + total raised
-
 def _score_funding(fv: FeatureVector) -> float:
     """
-    Funding score aligned with 'early-stage identification' thesis.
+    Funding score aligned with Core's increased outbound goal.
+    Arjan explained while we don't want to be funding pre seed, we want to be reaching out earlier.
     Higher score for earlier stages and smaller total funding.
     """
-    # Normalize stage
+    # normalize stage
     stage_key = (fv.stage or "").upper().replace(" ", "_")
     stage_base = STAGE_BASE_SCORES.get(stage_key, 0.0)
 
-    # Funding amount bonus (smaller = better)
+    # funding amount bonus (smaller = better)
     amount = fv.funding_total or 0.0
     bonus = 0.0
     for upper_bound, bracket_bonus in FUNDING_BONUS_BRACKETS:

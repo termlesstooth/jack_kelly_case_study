@@ -24,7 +24,6 @@ def process_company(
     """
 
     features: FeatureVector = build_features(raw, enrichment)
-    print(features)
     scores: ScoreBreakdown = score_company(features)
 
     website_url = enrichment.website_url or f"https://{enrichment.website_domain}" if enrichment.website_domain else raw.url
@@ -54,8 +53,7 @@ def process_company(
     )
 
 
-# -------------------------------------------------------------------
-# Helpers
+# --- Helpers ---
 def _extract_country_state(location: Optional[Dict[str, Any]]) -> Tuple[Optional[str], Optional[str]]:
     """
     Very naive parser that expects location["location"] like:
@@ -77,4 +75,3 @@ def _extract_country_state(location: Optional[Dict[str, Any]]) -> Tuple[Optional
 
     # Fallback: only one part, treat as country
     return parts[0], None
-# -------------------------------------------------------------------

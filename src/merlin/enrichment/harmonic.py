@@ -19,7 +19,7 @@ def _clean_domain(url: str) -> str:
     url = url.replace("https://", "").replace("http://", "")
     return url.split("/")[0].strip()
 
-
+# TODO: future improvement, update for more than just founders
 def _extract_founders(company: Dict[str, Any]) -> List[FounderContact]:
     founders: List[FounderContact] = []
     for emp in company.get("employees") or []:
@@ -54,13 +54,26 @@ def _extract_founders(company: Dict[str, Any]) -> List[FounderContact]:
 
         # normalize empty list -> None
         emails = emails or None
+        
+        # founder-level highlights
+        raw_highlights = emp.get("highlights") or []
+        highlights = [
+            EmployeeHighlight(
+                category=h.get("category", ""),
+                text=h.get("text",""),
+            )
+            for h in raw_highlights
+            if h.get("category") or h.get("text")
+        ] or None
+
 
         founders.append(
             FounderContact(
                 name=name,
                 title=title,
                 linkedin_url=linkedin_url,
-                emails=emails
+                emails=emails,
+                highlights=highlights
             )
         )
     return founders
@@ -179,6 +192,18 @@ def map_company_to_harmonic_enrichment(company: Dict[str, Any]) -> HarmonicEnric
     founding_date_grain = founding_date_dict.get("granularity")
     advisor_headcount = traction_metrics.get("headcount_advisor")
 
+    # extract founders once
+    founders = _extract_founders(company)
+
+    
+    # flatten founder highlights
+    founder_employee_highlights = [
+        h
+        for f in (founders or [])
+        for h in (f.highlights or [])
+    ]
+
+
     return HarmonicEnrichment(
         # identity / keys
         harmonic_id=company.get("entityUrn") or "",
@@ -208,7 +233,14 @@ def map_company_to_harmonic_enrichment(company: Dict[str, Any]) -> HarmonicEnric
         tags=[t.get("displayValue") for t in (company.get("tags") or [])],
         tags_v2=[t.get("displayValue") for t in (company.get("tagsV2") or [])],
 
-        industries=tag_groups["industries"],
+        # industries come from tags NOTE: Appears to be a legacy feature
+        industries=[
+            t.get("displayValue")
+            for t in (company.get("tags") or [])
+            if (t.get("type") or "").upper() == "INDUSTRY"
+        ],
+
+
         market_verticals=tag_groups["market_verticals"],
         market_sub_verticals=tag_groups["market_sub_verticals"],
         technology_types=tag_groups["technology_types"],
@@ -217,7 +249,7 @@ def map_company_to_harmonic_enrichment(company: Dict[str, Any]) -> HarmonicEnric
         # highlights
         highlight_categories=highlight_categories,
         highlight_texts=highlight_texts,
-        employee_highlights=_extract_employee_highlights(company),
+        employee_highlights=founder_employee_highlights or None, # NOTE: Used this originally for highlights, but have founder specific highlights now. May come in use if we want to score based on other employees
 
         # traction / traffic / extra signals
         traction_metrics=traction_metrics,
@@ -226,7 +258,11 @@ def map_company_to_harmonic_enrichment(company: Dict[str, Any]) -> HarmonicEnric
         likelihood_of_backing=company.get("likelihoodOfBacking"),
 
         # founders
-        founders=_extract_founders(company),
+        founders=founders or None,
+
+        # founder highlights
+        founder_employee_highlights=founder_employee_highlights or None
+        
     )
 
 

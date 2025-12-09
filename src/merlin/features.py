@@ -16,136 +16,190 @@ def build_features(
 ) -> FeatureVector:
     """
     Create a FeatureVector from RawCompany + HarmonicEnrichment.
-    Uses ONLY the fields available on HarmonicEnrichment.
+    Prefers Harmonic fields but falls back to RawCompany where helpful.
     """
 
-    # Defaults: In case we don't get a response back from Harmonic
-    stage = None
-    funding_total = None
-    location = None
-    description = None
+    # --- Defaults ---
+    description: str = raw.description or ""
+    stage: str = raw.stage or ""
+    funding_total: int = 0
+    location: str = ""
+    headcount: int = 0
+    customer_type: str = ""
     market_verticals: List[str] = []
     market_sub_verticals: List[str] = []
 
-    founder_flags = {
-        "top_university": False,
-        "seasoned_operator": False,
-        "seasoned_executive": False,
-        "prior_vc_backed_founder": False,
-        "prior_vc_backed_executive": False,
-        "prior_exit": False,
+    # ---Founder highlight flags (all default False) ---
+    base_flags: dict[str, bool] = {
+        "ten_m_club": False,
         "twenty_m_club": False,
-        "seasoned_adviser": False,
-        "elite_industry_experience": False,
-        "deep_technical_background": False,
+        "fifty_m_plus_club": False,
         "five_m_club": False,
+        "current_student": False,
+        "deep_technical_background": False,
+        "elite_industry_experience": False,
+        "founder_turned_operator": False,
+        "hbcu_alum": False,
+        "jack_of_all_trades": False,
+        "legacy_tech_company_experience": False,
+        "major_research_institution_experience": False,
+        "major_tech_company_experience": False,
+        "prior_exit": False,
+        "prior_vc_backed_executive": False,
+        "prior_vc_backed_founder": False,
+        "seasoned_adviser": False,     
+        "seasoned_executive": False,
+        "seasoned_founder": False,
+        "seasoned_operator": False,
+        "top_ai_experience": False,
+        "top_company_alum": False,
+        "top_university": False,
+        "top_web3_experience": False,
+        "yc_backed_founder": False,
     }
 
+    employee_flags = dict(base_flags)  # all employees
+    founder_flags = dict(base_flags)   # founder-only
 
-    # Pull from Harmonic enrichment (if available)
-    # -----------------------------
+    # --- ENrichment ---
     if enrichment is not None:
-
-
-        #Description
-        description = enrichment.description #TODO: Do we want to fall back to raw description?
-
+        # Description: combine raw + harmonic so SMB signals are not lost
+        if enrichment.description:
+            description = " ".join([raw.description or "", enrichment.description]).strip()
+        else:
+            description = raw.description or ""
+        
         # Headcount
-        headcount = enrichment.headcount
+        if enrichment.headcount is not None:
+            headcount = enrichment.headcount
 
-        # Funding
-        stage = enrichment.stage or enrichment.funding_stage
-        funding_total = enrichment.funding_total
+        # Funding / Stage
+        if enrichment.stage or enrichment.funding_stage:
+            stage = enrichment.stage or enrichment.funding_stage or stage
+        if enrichment.funding_total is not None:
+            funding_total = int(enrichment.funding_total)
 
         # Geography
         if enrichment.location:
-            location = enrichment.location.get("location")
+            location = enrichment.location.get("location") or location
 
-        # Sector Fit
+        # Sector fit
         market_verticals = enrichment.market_verticals or []
         market_sub_verticals = enrichment.market_sub_verticals or []
-        customer_type = enrichment.customer_type
+        customer_type = enrichment.customer_type or ""
 
-        # Founder Quality Flags
-        founder_flags.update(
-            _employee_highlights_to_flags(enrichment.employee_highlights or [])
-        )
-        # TODO: Separate employee highlights and founder highlights
-    # -----------------------------
+        # --- Employee/advisor highlights → flags (only used for seasoned_adviser) ---
+        if enrichment.employee_highlights:
+            employee_flags.update(
+                _employee_highlights_to_flags(enrichment.employee_highlights)
+            )
 
-    
-    # Build the FeatureVector
-    # -----------------------------
+        # --- Founder-only highlights → flags ---
+        if getattr(enrichment, "founder_employee_highlights", None):
+            founder_flags.update(
+                _employee_highlights_to_flags(enrichment.founder_employee_highlights)
+            )
+
+    # --- Combine into final flags ---
+    combined_flags: dict[str, bool] = {}
+    for key in base_flags.keys():
+        if key == "seasoned_adviser":
+            # NOTE: Future improvement: bring in non founder season advisers
+            combined_flags[key] = founder_flags[key]
+        else:
+            # All other signals are founder-only
+            combined_flags[key] = founder_flags[key]
+
+    # --- Build FeatureVector for scoring ---
     return FeatureVector(
-        stage=stage,
+        description=description,
+        headcount=headcount,
         customer_type=customer_type,
-        headcount= headcount,
+        stage=stage,
         funding_total=funding_total,
         location=location,
-        description=description,
         market_verticals=market_verticals,
         market_sub_verticals=market_sub_verticals,
-        top_university=founder_flags["top_university"],
-        seasoned_operator=founder_flags["seasoned_operator"],
-        seasoned_executive=founder_flags["seasoned_executive"],
-        prior_vc_backed_founder=founder_flags["prior_vc_backed_founder"],
-        prior_vc_backed_executive=founder_flags["prior_vc_backed_executive"],
-        prior_exit=founder_flags["prior_exit"],
-        twenty_m_club=founder_flags["twenty_m_club"],
-        seasoned_adviser=founder_flags["seasoned_adviser"],
-        elite_industry_experience=founder_flags["elite_industry_experience"],
-        deep_technical_background=founder_flags["deep_technical_background"],
-        five_m_club=founder_flags["five_m_club"],
+        ten_m_club=combined_flags["ten_m_club"],
+        twenty_m_club=combined_flags["twenty_m_club"],
+        fifty_m_plus_club=combined_flags["fifty_m_plus_club"],
+        five_m_club=combined_flags["five_m_club"],
+        current_student=combined_flags["current_student"],
+        deep_technical_background=combined_flags["deep_technical_background"],
+        elite_industry_experience=combined_flags["elite_industry_experience"],
+        founder_turned_operator=combined_flags["founder_turned_operator"],
+        hbcu_alum=combined_flags["hbcu_alum"],
+        jack_of_all_trades=combined_flags["jack_of_all_trades"],
+        legacy_tech_company_experience=combined_flags["legacy_tech_company_experience"],
+        major_research_institution_experience=combined_flags["major_research_institution_experience"],
+        major_tech_company_experience=combined_flags["major_tech_company_experience"],
+        prior_exit=combined_flags["prior_exit"],
+        prior_vc_backed_executive=combined_flags["prior_vc_backed_executive"],
+        prior_vc_backed_founder=combined_flags["prior_vc_backed_founder"],
+        seasoned_adviser=combined_flags["seasoned_adviser"],
+        seasoned_executive=combined_flags["seasoned_executive"],
+        seasoned_founder=combined_flags["seasoned_founder"],
+        seasoned_operator=combined_flags["seasoned_operator"],
+        top_ai_experience=combined_flags["top_ai_experience"],
+        top_company_alum=combined_flags["top_company_alum"],
+        top_university=combined_flags["top_university"],
+        top_web3_experience=combined_flags["top_web3_experience"],
+        yc_backed_founder=combined_flags["yc_backed_founder"],
     )
-    # -----------------------------
 
 
 
-# Helper Functions
-# -------------------------------------------------------------------
+# --- Helper Functions ---
+# maps Harmonic highlight category → FeatureVector boolean field
+HIGHLIGHT_CATEGORY_TO_FLAG: dict[str, str] = {
+    "$10M Club": "ten_m_club",
+    "$20M Club": "twenty_m_club",
+    "$50M+ Club": "fifty_m_plus_club",
+    "$5M Club": "five_m_club",
+    "Current Student": "current_student",
+    "Deep Technical Background": "deep_technical_background",
+    "Elite Industry Experience": "elite_industry_experience",
+    "Founder Turned Operator": "founder_turned_operator",
+    "HBCU Alum": "hbcu_alum",
+    "Jack of All Trades": "jack_of_all_trades",
+    "Legacy Tech Company Experience": "legacy_tech_company_experience",
+    "Major Research Institution Experience": "major_research_institution_experience",
+    "Major Tech Company Experience": "major_tech_company_experience",
+    "Prior Exit": "prior_exit",
+    "Prior VC Backed Executive": "prior_vc_backed_executive",
+    "Prior VC Backed Founder": "prior_vc_backed_founder",
+    "Seasoned Adviser": "seasoned_adviser",
+    "Seasoned Executive": "seasoned_executive",
+    "Seasoned Founder": "seasoned_founder",
+    "Seasoned Operator": "seasoned_operator",
+    "Top AI Experience": "top_ai_experience",
+    "Top Company Alum": "top_company_alum",
+    "Top University": "top_university",
+    "Top Web3 Experience": "top_web3_experience",
+    "YC Backed Founder": "yc_backed_founder",
+}
 
-def _employee_highlights_to_flags(highlights: List[EmployeeHighlight]) -> Dict[str, bool]:
-    flags = {
-        "top_university": False,
-        "seasoned_operator": False,
-        "seasoned_executive": False,
-        "prior_vc_backed_founder": False,
-        "prior_vc_backed_executive": False,
-        "prior_exit": False,
-        "twenty_m_club": False,
-        "seasoned_adviser": False,
-        "elite_industry_experience": False,
-        "deep_technical_background": False,
-        "five_m_club": False,
-    }
 
-    for h in highlights:
-        cat = (h.category or "").upper()
+def _employee_highlights_to_flags(
+    highlights: list[EmployeeHighlight] | list[dict],
+) -> dict[str, bool]:
+    """
+    Takes a list of employee highlight objects or dicts and returns binary flags
+    """
+    flags: dict[str, bool] = {v: False for v in HIGHLIGHT_CATEGORY_TO_FLAG.values()}
 
+    for h in highlights or []:
+        # Support both dataclass and dict shapes
+        if isinstance(h, EmployeeHighlight):
+            cat = h.category
+        else:
+            cat = h.get("category")
 
-        # TODO: Harmonic doesn't clearly state in API docs how many of these tags there are. Review
-        if cat == "TOP_UNIVERSITY":
-            flags["top_university"] = True
-        elif cat == "SEASONED_OPERATOR":
-            flags["seasoned_operator"] = True
-        elif cat == "SEASONED_EXECUTIVE":
-            flags["seasoned_executive"] = True
-        elif cat == "PRIOR_VC_BACKED_FOUNDER":
-            flags["prior_vc_backed_founder"] = True
-        elif cat == "PRIOR_VC_BACKED_EXECUTIVE":
-            flags["prior_vc_backed_executive"] = True
-        elif cat == "PRIOR_EXIT":
-            flags["prior_exit"] = True
-        elif cat in ("20_M_CLUB", "TWENTY_M_CLUB"):
-            flags["twenty_m_club"] = True
-        elif cat == "SEASONED_ADVISER":
-            flags["seasoned_adviser"] = True
-        elif cat == "ELITE_INDUSTRY_EXPERIENCE":
-            flags["elite_industry_experience"] = True
-        elif cat == "DEEP_TECHNICAL_BACKGROUND":
-            flags["deep_technical_background"] = True
-        elif cat in ("5_M_CLUB", "FIVE_M_CLUB"):
-            flags["five_m_club"] = True
+        if not cat:
+            continue
+
+        flag_name = HIGHLIGHT_CATEGORY_TO_FLAG.get(cat)
+        if flag_name:
+            flags[flag_name] = True
 
     return flags
-# -------------------------------------------------------------------

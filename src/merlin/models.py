@@ -18,8 +18,7 @@ class RawCompany:
     industry: str
 
 
-# Harmonic enrichment models
-# -------------------------------------------------------------------
+# --- Harmonic enrichment models ---
 @dataclass
 class FounderContact:
     """
@@ -30,6 +29,9 @@ class FounderContact:
     title: Optional[str] = None
     linkedin_url: Optional[str] = None
     emails: Optional[List[str]] = None
+
+    # founder specific highlights
+    highlights: Optional[List[str]] = None
 
 
 @dataclass
@@ -95,6 +97,7 @@ class HarmonicEnrichment:
     highlight_categories: List[str] = None
     highlight_texts: List[str] = None
     employee_highlights: List[EmployeeHighlight] = None
+    founder_employee_highlights: List[EmployeeHighlight] = None
 
     # traction / traffic / extra signals
     traction_metrics: Optional[Dict[str, Any]] = None
@@ -104,12 +107,10 @@ class HarmonicEnrichment:
 
     # founders
     founders: List[FounderContact] = None
-# -------------------------------------------------------------------
 
 
-
-# Place holder for additional vendor-specific enrichment models
-# -------------------------------------------------------------------
+# NOTE: Future improvement: query more vendors
+# --- Place holder for additional vendor-specific enrichment models ---
 @dataclass
 class ApolloEnrichment:
     """
@@ -120,12 +121,10 @@ class ApolloEnrichment:
     annual_revenue: Optional[float] = None
     tech_stack: List[str] = None
     linkedin_url: Optional[str] = None
-# -------------------------------------------------------------------
-
 
 
 # Aggregated enrichment for a single company (all providers in one place)
-# Stale right now
+# Stale right now. Can bring in when we have more enrichment providers.
 @dataclass
 class CompanyEnrichment:
     """
@@ -162,17 +161,32 @@ class FeatureVector:
     market_sub_verticals: List[str]
 
     # Founder Quality
-    top_university: bool = False
-    seasoned_operator: bool = False
-    seasoned_executive: bool = False
-    prior_vc_backed_founder: bool = False
-    prior_vc_backed_executive: bool = False
-    prior_exit: bool = False
+    ten_m_club: bool = False
     twenty_m_club: bool = False
-    seasoned_adviser: bool = False
-    elite_industry_experience: bool = False
-    deep_technical_background: bool = False
+    fifty_m_plus_club: bool = False
     five_m_club: bool = False
+    current_student: bool = False
+    deep_technical_background: bool = False
+    elite_industry_experience: bool = False
+    founder_turned_operator: bool = False
+    hbcu_alum: bool = False
+    jack_of_all_trades: bool = False
+    legacy_tech_company_experience: bool = False
+    major_research_institution_experience: bool = False
+    major_tech_company_experience: bool = False
+    prior_exit: bool = False
+    prior_vc_backed_executive: bool = False
+    prior_vc_backed_founder: bool = False
+    seasoned_adviser: bool = False
+    seasoned_executive: bool = False
+    seasoned_founder: bool = False
+    seasoned_operator: bool = False
+    top_ai_experience: bool = False
+    top_company_alum: bool = False
+    top_university: bool = False
+    top_web3_experience: bool = False
+    yc_backed_founder: bool = False
+
 
 
 @dataclass
@@ -203,7 +217,7 @@ class ScoredCompanyRecord:
     customer_type: str
 
     # Sector(s)
-    sectors: List[str]  # e.g. market_verticals
+    sectors: List[str]  # market_verticals
     sub_sectors: List[str] # market_sub_verticals
 
     # Geography

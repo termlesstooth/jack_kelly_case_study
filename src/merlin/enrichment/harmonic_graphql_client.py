@@ -107,6 +107,10 @@ mutation($identifiers: CompanyEnrichmentIdentifiersInput!) {
           companyName
         }
         fullName
+        highlights {
+          category
+          text
+        }
         socials {
           linkedin {
             url

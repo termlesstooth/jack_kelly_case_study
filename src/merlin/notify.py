@@ -35,7 +35,7 @@ def send_slack_message(text: str, *, username: Optional[str] = None) -> None:
 
 def _format_results_for_slack(results: Iterable[Any]) -> str:
     """
-    Build a rich, human-readable Slack message from scored company results.
+    Builds human readable message for Slack
     """
 
     # --- Merlin Intro Message ---
@@ -83,7 +83,7 @@ def _format_results_for_slack(results: Iterable[Any]) -> str:
             fname = getattr(f, "name", "") or "Founder"
             linkedin = getattr(f, "linkedin", "") or getattr(f, "linkedin_url", "")
 
-            # Collect all emails (support both email + emails for backwards compatibility)
+            # Collect all emails
             primary = getattr(f, "email", None)
             email_list = getattr(f, "emails", None)
 
@@ -101,7 +101,7 @@ def _format_results_for_slack(results: Iterable[Any]) -> str:
             if linkedin:
                 parts.append(f"<{linkedin}|LinkedIn>")
             if emails:
-                parts.append(" | ".join(emails))  # ← SHOW ALL EMAILS
+                parts.append(" | ".join(emails))
 
             lines.append("   – " + " — ".join(parts))
 
@@ -128,9 +128,29 @@ def _format_results_for_slack(results: Iterable[Any]) -> str:
 
 def send_results_to_slack(results: Iterable[Any]) -> None:
     """
-    Sends the wizard intro + formatted company results to Slack.
+    Sends the wizard intro + formatted company results to Slack,
+    but ONLY for companies with total score >= 75.
     """
-    text = _format_results_for_slack(results)
+    results = list(results)
+
+    # Filter by score threshold
+    filtered = []
+    for r in results:
+        scores = getattr(r, "scores", None)
+        if scores and scores.total >= 80:
+            filtered.append(r)
+
+    # If nothing qualifies, send a friendly message
+    if not filtered:
+        send_slack_message(
+            "Merlin gazed deeply into the crystal ball…\n"
+            "But alas, no companies scored above *75* today. :crystal_ball:",
+            username="Merlin VC Bot"
+        )
+        return
+
+    # Format only those companies
+    text = _format_results_for_slack(filtered)
     if not text:
         log.warning("No text generated for Slack; skipping.")
         return
