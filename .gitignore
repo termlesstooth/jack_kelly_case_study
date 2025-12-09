@@ -17,3 +17,6 @@ outputs/
 # Tools / IDE
 .vscode/
 .idea/
+
+.utility_scripts/
+.archive/
