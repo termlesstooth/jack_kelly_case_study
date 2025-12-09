@@ -32,34 +32,26 @@ from src.merlin.scoring.weights import (
     MAX_SCORE,
 )
 
-load_dotenv()  # ensure MERLIN_SLACK_WEBHOOK_URL, DB path, etc. are loaded
+load_dotenv()
 
 
 def _extract_weight(v: Any):
-    """Normalize weight values that might be plain numbers or dicts."""
     if isinstance(v, (int, float)):
         return float(v)
     if isinstance(v, dict) and "weight" in v:
-            try:
-                return float(v["weight"])
-            except (TypeError, ValueError):
-                return None
+        try:
+            return float(v["weight"])
+        except (TypeError, ValueError):
+            return None
     return None
 
 
 def load_raw_harmonic(path: Path) -> List[dict]:
-    """Load saved Harmonic raw GraphQL output (same as run_from_raw)."""
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def run_pipeline(path: Path) -> tuple[list[ScoredCompanyRecord], pd.DataFrame]:
-    """
-    Mirror src/merlin/run_from_raw.main, but:
-    - no Slack
-    - no DB writes (both happen in streamlit app)
-    - returns (results, leaderboard_df)
-    """
     if not path.is_file():
         raise FileNotFoundError(
             f"Input file not found: {path}. "
@@ -75,7 +67,6 @@ def run_pipeline(path: Path) -> tuple[list[ScoredCompanyRecord], pd.DataFrame]:
 
         rc = RawCompany(**raw_company_dict)
 
-        # If Harmonic found a company, map it to HarmonicEnrichment
         if (
             harmonic_raw
             and harmonic_raw.get("companyFound")
@@ -84,14 +75,12 @@ def run_pipeline(path: Path) -> tuple[list[ScoredCompanyRecord], pd.DataFrame]:
             company_json = harmonic_raw["company"]
             he: HarmonicEnrichment = map_company_to_harmonic_enrichment(company_json)
         else:
-            continue  # skip if not found
+            continue
 
         scored = process_company(rc, he)
         results.append(scored)
 
-    # Sort by total score descending
     results.sort(key=lambda r: r.scores.total, reverse=True)
-
     df = scored_companies_to_df(results)
     return results, df
 
@@ -103,7 +92,7 @@ def main():
         layout="wide",
     )
 
-    # --- Light CSS polish ---
+    # --- CSS ---
     st.markdown(
         """
         <style>
@@ -139,7 +128,7 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # --- Hero / Intro ---
+    # --- Hero Section ---
     st.markdown(
         """
         <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem;">
@@ -155,38 +144,33 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # --- How to read this dashboard ---
+    # --- How To Read ---
     st.markdown(
         """
         <div class="merlin-card">
           <span class="merlin-pill">Partner View</span>
           <h3 style="margin-top:0.75rem;margin-bottom:0.35rem;">How to Read this UI</h3>
-          <p><b>Merlin Score</b> is ranking of companies based on Core VC’s investment thesis and interview insight.</p>
-          <p>The score is a composite of <b>Team</b>, <b>Market</b>, and <b>Funding</b>.</p>
+          <p><b>Merlin Score</b> ranks companies based on Core VC’s investment thesis and founder insight.</p>
           <ul>
-            <li><b>Team</b> leans heavily on founder track record: YC, prior exits, major tech, and deep domain.</li>
-            <li><b>Market</b> captures vertical/sub-vertical attractiveness and SMB enablement.</li>
-            <li><b>Funding</b> reflects stage and total capital raised, with calibrated bonuses by bracket.</li>
+            <li><b>Team</b> score → founder track record, YC, prior exits, major tech, domain expertise.</li>
+            <li><b>Market</b> score → vertical attractiveness, SMB enablement.</li>
+            <li><b>Funding</b> score → stage + total capital raised mapped to score curves.</li>
           </ul>
-          <p style="color:#9ca3af;">Use the leaderboard to identify companies that Core should be building relationships with.</p>
-          <p style="color:#9ca3af;">Feel free to explore the Scoring Weights below.</p>
-          <p>When you're ready for Merlin to do his thing click the <b>Run Scoring</b> button.</p>
+          <p style="color:#9ca3af;">Click <b>Run Scoring</b> to evaluate the entire dataset.</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("")
-
-    # --- Run Scoring Button ---
+    # --- Run Scoring ---
     st.header("Run Merlin Scoring")
-
     path_str = "outputs/harmonic_raw_graphql_final.json"
-    run_btn = st.button("🔮 Run Scoring", use_container_width=False)
+    run_btn = st.button("🔮 Run Scoring")
     st.markdown("---")
 
     if run_btn:
         path = Path(path_str)
+
         try:
             results, df = run_pipeline(path)
         except Exception as e:
@@ -200,35 +184,33 @@ def main():
         except Exception as e:
             st.warning(f"Scoring ran, but Slack/DB step had an issue: {e}")
 
-        col_left, col_right = st.columns([3, 2], gap="large")
+        # --- Build Table Rows ---
+        st.subheader("Company Leaderboard")
 
-        with col_left:
-            st.subheader("Company Leaderboard")
-            table_rows = []
-            for r in results:
-                founders = r.founders or []
+        table_rows: list[dict[str, Any]] = []
+        for r in results:
+            founders = r.founders or []
+            founder_names = [f.name for f in founders]
+            founder_links = [f.linkedin_url for f in founders if f.linkedin_url]
+            founder_emails = []
+            for f in founders:
+                if f.emails:
+                    founder_emails.extend(f.emails)
 
-                founder_names = [f.name for f in founders]
-                founder_links = [f.linkedin_url for f in founders if f.linkedin_url]
-                founder_emails = []
-                for f in founders:
-                    if f.emails:
-                        founder_emails.extend(f.emails)
-
-                table_rows.append(
-                    {
-                        "Company Name": r.name,
-                        "URL": r.website_url or "",
-                        "Description": (r.description or "").strip(),
-                        "Founders": ", ".join(founder_names),
-                        "Founder LinkedIn": ", ".join(founder_links),
-                        "Founder Emails": ", ".join(founder_emails),
-                        "Total Score": r.scores.total,
-                        "Team Score": r.scores.team,
-                        "Market Score": r.scores.market,
-                        "Funding Score": r.scores.funding,
-                    }
-                )
+            table_rows.append(
+                {
+                    "Company Name": r.name,
+                    "URL": r.website_url or "",
+                    "Description": (r.description or "").strip(),
+                    "Founders": ", ".join(founder_names),
+                    "Founder LinkedIn": ", ".join(founder_links),
+                    "Founder Emails": ", ".join(founder_emails),
+                    "Total Score": r.scores.total,
+                    "Team Score": r.scores.team,
+                    "Market Score": r.scores.market,
+                    "Funding Score": r.scores.funding,
+                }
+            )
 
         slack_df = pd.DataFrame(table_rows)
 
@@ -244,37 +226,33 @@ def main():
             },
         )
 
-        with col_right:
-            st.subheader("Partner Notes")
-            st.markdown(
-                """
-                <div class="merlin-card">
-                  <ul>
-                    <li>Scroll to the right to see score and composite score breakdown.</li>
-                    <li>Use the JSON view below if you want to dig into features that make up the score.</li>
-                    <li>Note: This is not what gets written to the database.</li>
-                  </ul>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        # --- Partner Notes ---
+        st.markdown("### Partner Notes")
+        st.markdown(
+            """
+            <div class="merlin-card">
+            <ul>
+                <li>Scroll right to view the full score breakdown.</li>
+                <li>See the Feature Vector section below for underlying attributes.</li>
+                <li>Slack notifications contain a skim-friendly summary for partners.</li>
+            </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         st.markdown("---")
 
-        # Feature data
+        # --- Feature Vector Viewer ---
         with st.expander("🧬 Feature Vector (per company)"):
-
             feature_rows: list[dict[str, Any]] = []
-
             for r in results:
                 fv = getattr(r, "features", {}) or {}
                 row: dict[str, Any] = {"Company Name": r.name}
-
                 if isinstance(fv, dict):
                     row.update(fv)
                 else:
                     row["features"] = fv
-
                 feature_rows.append(row)
 
             feature_df = pd.DataFrame(feature_rows)
@@ -282,7 +260,9 @@ def main():
 
         st.markdown("---")
 
-    # --- Scoring Weights ---
+    # ------------------------------
+    # Scoring Weights Section
+    # ------------------------------
     st.header("Scoring Weights")
     tab_comp, tab_team, tab_market, tab_funding = st.tabs(
         ["Composite", "Team", "Market", "Funding"]
@@ -291,12 +271,12 @@ def main():
     with tab_comp:
         st.write(
             """
-            A company's total score is calculated as:
-
             ```python
-            total_score = (team_score * team_weight)
-                        + (market_score * market_weight)
-                        + (funding_score * funding_weight)
+            total_score = (
+                team_score * team_weight
+              + market_score * market_weight
+              + funding_score * funding_weight
+            )
             ```
             """
         )
@@ -323,19 +303,13 @@ def main():
             {"vertical": k, "weight": _extract_weight(v)}
             for k, v in VERTICAL_WEIGHTS.items()
         ]
-        st.dataframe(
-            pd.DataFrame(vert_rows).sort_values("weight", ascending=False),
-            use_container_width=True,
-        )
+        st.dataframe(pd.DataFrame(vert_rows).sort_values("weight", ascending=False))
 
         sub_rows = [
             {"sub_vertical": k, "weight": _extract_weight(v)}
             for k, v in SUB_VERTICAL_WEIGHTS.items()
         ]
-        st.dataframe(
-            pd.DataFrame(sub_rows).sort_values("weight", ascending=False),
-            use_container_width=True,
-        )
+        st.dataframe(pd.DataFrame(sub_rows).sort_values("weight", ascending=False))
 
     with tab_funding:
         st.dataframe(
