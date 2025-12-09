@@ -237,6 +237,7 @@ def main():
             <ul>
                 <li>Scroll right to view the full score breakdown.</li>
                 <li>See the Feature Vector section below for underlying attributes.</li>
+                <li>This frontend is purely for exploration and visualization. It does not reflect what is being written to the database or sent to Slack.</li>
                 <li>Slack notifications contain a skim-friendly summary for partners.</li>
             </ul>
             </div>
