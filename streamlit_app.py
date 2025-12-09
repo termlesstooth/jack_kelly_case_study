@@ -230,16 +230,19 @@ def main():
                     }
                 )
 
-            slack_df = pd.DataFrame(table_rows)
-            styled = slack_df.style.format(
-                {
-                    "Total Score": "{:.2f}",
-                    "Team Score": "{:.2f}",
-                    "Market Score": "{:.2f}",
-                    "Funding Score": "{:.2f}",
-                }
-            )
-            st.dataframe(styled, use_container_width=True)
+        slack_df = pd.DataFrame(table_rows)
+
+        st.dataframe(
+            slack_df,
+            use_container_width=True,
+            column_config={
+                "URL": st.column_config.LinkColumn("URL"),
+                "Total Score": st.column_config.NumberColumn("Total Score", format="%.2f"),
+                "Team Score": st.column_config.NumberColumn("Team Score", format="%.2f"),
+                "Market Score": st.column_config.NumberColumn("Market Score", format="%.2f"),
+                "Funding Score": st.column_config.NumberColumn("Funding Score", format="%.2f"),
+            },
+        )
 
         with col_right:
             st.subheader("Partner Notes")
